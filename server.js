@@ -22,6 +22,9 @@ const vehicleLocations = {};
 // In-memory storage for active rides
 const activeRides = new Set();
 
+// In-memory storage for camera frames
+const frames = {};
+
 // Routes
 
 // POST /location - Receive and store vehicle location
@@ -82,6 +85,34 @@ app.get('/location/:rideId', (req, res) => {
   res.status(200).json(location);
 });
 
+// POST /upload-frame - Upload camera frame
+app.post('/upload-frame', (req, res) => {
+  const { rideId, image } = req.body;
+
+  if (!rideId || !image) {
+    return res.status(400).json({ error: 'Missing required fields: rideId, image' });
+  }
+
+  if (!activeRides.has(rideId)) {
+    return res.status(403).json({ error: `Ride ${rideId} is not active` });
+  }
+
+  frames[rideId] = image;
+  res.status(200).json({ message: 'Frame uploaded successfully' });
+});
+
+// GET /frame/:rideId - Get latest camera frame
+app.get('/frame/:rideId', (req, res) => {
+  const { rideId } = req.params;
+  const image = frames[rideId];
+
+  if (!image) {
+    return res.status(404).json({ error: `No frame found for ride ${rideId}` });
+  }
+
+  res.status(200).json({ image });
+});
+
 // POST /start-ride - Start tracking a ride
 app.post('/start-ride', (req, res) => {
   const { rideId } = req.body;
@@ -113,6 +144,7 @@ app.post('/stop-ride', (req, res) => {
 
   activeRides.delete(rideId);
   delete vehicleLocations[rideId];
+  delete frames[rideId];
   console.log(`Ride stopped: ${rideId}`);
 
   res.status(200).json({
@@ -140,10 +172,12 @@ app.get('/', (req, res) => {
     message: 'Location Tracking Server is running',
     endpoints: {
       post: '/location - Submit ride location (rideId, lat, lng)',
+      post_upload_frame: '/upload-frame - Submit camera frame (rideId, image)',
       post_start: '/start-ride - Start tracking a ride',
       post_stop: '/stop-ride - Stop tracking a ride',
       get: '/locations - Get all ride locations',
-      getOne: '/location/:rideId - Get specific ride location'
+      getOne: '/location/:rideId - Get specific ride location',
+      getFrame: '/frame/:rideId - Get latest camera frame'
     }
   });
 });
