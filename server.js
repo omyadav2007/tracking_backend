@@ -195,11 +195,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
+socket.on('disconnect', () => {
+  console.log(`Client disconnected: ${socket.id}`);
+
+  // Notify all rooms except its own socket room
+  socket.rooms.forEach(room => {
+    if (room !== socket.id) {
+      socket.to(room).emit('webrtc-viewer-left', socket.id);
+    }
   });
 });
+});
+
 
 // Health check endpoint
 app.get('/', (req, res) => {
