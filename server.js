@@ -55,7 +55,7 @@ app.post('/location', (req, res) => {
 
   console.log(`Location updated for ride ${rideId}:`, vehicleLocations[rideId]);
 
-  
+
   // Broadcast update to all connected clients
   io.emit('locationUpdate', vehicleLocations[rideId]);
 
@@ -159,6 +159,41 @@ io.on('connection', (socket) => {
 
   // Send all current locations to newly connected client
   socket.emit('initialLocations', vehicleLocations);
+
+  // WebRTC Signaling
+  socket.on('webrtc-join', (rideId) => {
+    socket.join(rideId);
+    socket.to(rideId).emit('webrtc-viewer-joined', socket.id);
+  });
+
+  // Driver joins their own room to receive signaling messages
+  socket.on('webrtc-driver-join', (rideId) => {
+    socket.join(rideId);
+  });
+
+  socket.on('webrtc-offer', (data) => {
+    if (data.to) {
+      io.to(data.to).emit('webrtc-offer', data);
+    } else {
+      socket.to(data.rideId).emit('webrtc-offer', data);
+    }
+  });
+
+  socket.on('webrtc-answer', (data) => {
+    if (data.to) {
+      io.to(data.to).emit('webrtc-answer', data);
+    } else {
+      socket.to(data.rideId).emit('webrtc-answer', data);
+    }
+  });
+
+  socket.on('webrtc-ice-candidate', (data) => {
+    if (data.to) {
+      io.to(data.to).emit('webrtc-ice-candidate', data);
+    } else {
+      socket.to(data.rideId).emit('webrtc-ice-candidate', data);
+    }
+  });
 
   // Handle disconnect
   socket.on('disconnect', () => {
